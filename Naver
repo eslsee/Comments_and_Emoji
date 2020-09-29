@@ -1,0 +1,171 @@
+import datetime
+import requests
+from bs4 import BeautifulSoup
+import re
+import sys
+import pprint
+
+#set the crawling date
+start = datetime.datetime.strptime("2019-12-07", "%Y-%m-%d")
+end = datetime.datetime.strptime("2019-12-14", "%Y-%m-%d")
+
+date_array =     (start + datetime.timedelta(days=x) for x in range(0, (end-start).days))
+
+date_list =[] 
+for date_object in date_array:
+    date_list.append(date_object.strftime("%Y%m%d"))
+    
+_title=[]
+_likes =[]
+_link =[]
+
+for i in date_list:
+    url = "https://news.naver.com/main/ranking/popularMemo.nhn?rankingType=popular_memo&sectionId=105&date="+str(i)
+    r = requests.get(url)
+    html = r.content
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    #extract title
+    title=[]
+    for i in soup.find_all("a", class_="nclicks(cmt.sci)"):
+        #print (i)
+        try:
+            if i['title'] not in title:
+                #중복된 게 아니면 넣어라
+                title.append(i['title'])
+            else:
+                pass
+        except KeyError:
+            pass
+    _title.append(title)
+    
+    
+    #extract likes
+    likes = []
+    for i in soup.find_all("a", class_="count_cmt" ):
+        try:
+            if i.text not in likes:
+                likes.append(int(i.text))
+                # messier in strings
+            else:
+                pass
+        except KeyError:
+            pass
+    _likes.append(likes)
+    
+    #extract link
+    raw_links = []
+    for i in soup.find_all("a", class_="nclicks(cmt.sci)"):
+        try:
+            if i['href'] not in raw_links:
+                #print(i['href'])
+                raw_links.append(i['href'])
+            else:
+                pass
+        except KeyError:
+            pass
+    links = ["https://news.naver.com"+str(link) for link in raw_links ]
+    links = links[1:]
+    _link.append(links)
+      #if it is inside, the link is duplicated
+
+print(_likes)
+print(len(_title))
+print(len(_link))
+
+print((_likes[5][1]))
+print((_title[5][1]))
+print((_link[5][1]))
+
+news_date = []
+for i in date_list:
+    a = list([i]*30)
+    news_date.append(a)
+    
+    
+x=[]
+for n in range(len(_title)):
+    y = list(zip(news_date[n], _title[n], _likes[n], _link[n]))
+    x.append(y)
+print(x[0][1][0])
+
+#scrape a specific title containing words
+tada = []
+for i in range(len(x)):
+    for n in range(len(x[i])):
+        title = x[i][n][1]
+        date = x[i][n][0]
+        link = x[i][n][3]
+        if '타다' in title :
+            tada.append([date, link, title])
+print(tada)
+
+#scrape from portal Naver
+List = []
+for n in range(len(tada)):
+    url = tada[n][1]
+    title = tada[n][2]
+    date = tada[n][0]
+    
+    print('number crawled:', n,"/",len(tada))
+    print('date:',date)
+    #print('url:', url)
+    
+    
+    oid=url.split("oid=")[1].split("&")[0]
+    aid=url.split("aid=")[1]
+    page=1    
+    header = {
+        "User-agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36",
+        "referer":url,
+
+    } 
+    while True :
+        c_url="https://apis.naver.com/commentBox/cbox/web_neo_list_jsonp.json?ticket=news&templateId=default_society&pool=cbox5&_callback=jQuery1707138182064460843_1523512042464&lang=ko&country=&objectId=news"+oid+"%2C"+aid+"&categoryId=&pageSize=20&indexSize=10&groupId=&listType=OBJECT&pageType=more&page="+str(page)+"&refresh=false&sort=FAVORITE" 
+    # 파싱하는 단계입니다.
+        r=requests.get(c_url,headers=header)
+        cont=BeautifulSoup(r.content,"html.parser")    
+        total_comm=str(cont).split('comment":')[1].split(",")[0]
+
+        match=re.findall('"contents":([^\*]*),"userIdNo"', str(cont))
+        d = [date] * len(match)
+        t = [title] * len(match)
+        u = [url] * len(match)
+        x = list(zip(d,t,u, match))
+    # 댓글을 리스트에 중첩합니다.
+        List.append(x)
+    # 한번에 댓글이 20개씩 보이기 때문에 한 페이지씩 몽땅 댓글을 긁어 옵니다.
+        if int(total_comm) <= ((page) * 20):
+            break
+        else : 
+            page+=1
+
+
+    # 여러 리스트들을 하나로 묶어 주는 함수입니다.
+    def flatten(l):
+        flatList = []
+        for elem in l:
+            # if an element of a list is a list
+            # iterate over this list and add elements to flatList 
+            if type(elem) == list:
+                for e in elem:
+                    flatList.append(e)
+            else:
+                flatList.append(elem)
+        return flatList
+
+
+    # result of the list
+    flatten(List)
+    List
+    
+#if you want to import as a csv file    
+    import csv
+csvfile = 'C:/Users/으넝/Documents/trial.csv'
+
+with open(csvfile, mode='w', encoding='utf8', newline='') as output:
+    writer = csv.writer(output, lineterminator='\n')
+    writer.writerow(['date','title','link','comment'])
+    for i in List:
+        writer.writerow(i)
+    
