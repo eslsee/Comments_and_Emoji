@@ -130,7 +130,7 @@ naive forecast
 
 Average Forecast
 
-![image](https://user-images.githubusercontent.com/62871418/95106446-7cb80400-0773-11eb-850f-74da0be133bc.png
+![image](https://user-images.githubusercontent.com/62871418/95106446-7cb80400-0773-11eb-850f-74da0be133bc.png)
 
 Moving Average
 
