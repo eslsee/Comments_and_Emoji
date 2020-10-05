@@ -1,0 +1,18 @@
+import requests
+import json
+import re
+
+#from developer tools > element > check the query to extract aid & oid configurations
+aid = "0002969403"
+oid = "025"
+
+r = requests.get("https://news.like.naver.com/v1/search/contents?suppress_response_codes=true&callback=jQuery112409851002752979665_1579250003804&q=NEWS%5Bne_"+oid+"_"+aid+"%5D")
+
+data = re.findall(r'(?<=jQuery)[0-9]*_[0-9]*(.*)', r.text)[0].replace("(","").replace(")","").replace(";","")
+jsonresponse = json.loads(data)
+
+result = []
+for r in jsonresponse['contents'][0]['reactions']:
+    result.append([r['reactionType'], r['count']])
+    
+result
